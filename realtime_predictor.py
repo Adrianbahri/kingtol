@@ -1,6 +1,6 @@
 import os
 os.environ["JAVA_HOME"] = "/opt/homebrew/opt/openjdk@17"
-os.environ["PYSPARK_SUBMIT_ARGS"] = "--packages org.apache.spark:spark-sql-kafka-0-10_2.13:3.5.0 pyspark-shell"
+os.environ["PYSPARK_SUBMIT_ARGS"] = "--packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.2 pyspark-shell"
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
