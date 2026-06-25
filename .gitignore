@@ -16,7 +16,6 @@ __pycache__/
 *.tar.gz
 *.tgz
 *.log
-temp_*.parquet
 
 # OS specific files
 .DS_Store
@@ -27,6 +26,15 @@ Thumbs.db
 # Docker volumes
 docker-volumes/
 
-# Allow Spark ML models Parquet files
-!*model/**/*.parquet
+# Spark Checkpoints (dibuat saat streaming berjalan)
+checkpoints/
+checkpoint_*/
 
+# Logs (dibuat oleh run_all.sh)
+logs/
+
+# Model files — DIKECUALIKAN dari git (terlalu besar, generate ulang via training)
+models/
+
+# Allow ClickHouse config
+!clickhouse-config/

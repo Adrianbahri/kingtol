@@ -20,7 +20,7 @@ client = clickhouse_connect.get_client(
 )
 
 
-# LANJUTKAN dari 2015-02 (data sebelumnya sudah masuk)
+# Range data yang akan diimport
 mulai = datetime(2015, 2, 1)
 selesai = datetime(2018, 12, 31)
 
@@ -56,19 +56,13 @@ while tanggal <= selesai:
     if akhir > selesai:
         akhir = selesai
 
-
-    print(
-        f"\nAmbil data {tanggal.date()} - {akhir.date()}"
-    )
-
+    print(f"\nAmbil data {tanggal.date()} - {akhir.date()}")
 
     try:
-
         frames = []
         bulan = tanggal
 
         while bulan <= akhir:
-
             y = bulan.year
             m = bulan.month
 
@@ -88,32 +82,29 @@ while tanggal <= selesai:
 
             bulan += relativedelta(months=1)
 
-
         if len(frames) == 0:
             print("  Tidak ada data periode ini")
             tanggal += relativedelta(months=3)
             continue
-
 
         df = pd.concat(frames, ignore_index=True)
         del frames
 
         print(f"  Total: {len(df):,} baris")
 
-
         # sesuaikan nama kolom (NYC TLC format -> ClickHouse schema)
         df = df.rename(columns={
-            "lpep_pickup_datetime": "lpepPickupDatetime",
+            "lpep_pickup_datetime":  "lpepPickupDatetime",
             "lpep_dropoff_datetime": "lpepDropoffDatetime",
-            "passenger_count": "passenger_count",
-            "trip_distance": "tripDistance",
-            "PULocationID": "puLocationId",
-            "DOLocationID": "doLocationId",
-            "RatecodeID": "RatecodeID",
-            "payment_type": "payment_type",
-            "fare_amount": "fareAmount"
+            "passenger_count":       "passenger_count",
+            "trip_distance":         "tripDistance",
+            "PULocationID":          "puLocationId",
+            "DOLocationID":          "doLocationId",
+            "RatecodeID":            "RatecodeID",
+            "payment_type":          "payment_type",
+            "fare_amount":           "fareAmount",
+            "tip_amount":            "tip_amount",   # ← Kolom tip ASLI
         })
-
 
         kolom = [
             "VendorID",
@@ -125,21 +116,25 @@ while tanggal <= selesai:
             "doLocationId",
             "RatecodeID",
             "payment_type",
-            "fareAmount"
+            "fareAmount",
+            "tip_amount",       # ← Sertakan tip_amount asli
         ]
 
         # hanya ambil kolom yang ada
         kolom_ada = [c for c in kolom if c in df.columns]
         df = df[kolom_ada].copy()
 
+        # Pastikan tip_amount ada (default 0 jika tidak ada di dataset lama)
+        if "tip_amount" not in df.columns:
+            df["tip_amount"] = 0.0
 
-        # cleaning
-        for c in ["passenger_count", "tripDistance", "fareAmount"]:
+        # cleaning numerik
+        for c in ["passenger_count", "tripDistance", "fareAmount", "tip_amount"]:
             if c in df.columns:
                 df[c] = df[c].fillna(0).astype(float)
 
         for c in ["VendorID", "puLocationId", "doLocationId",
-                   "RatecodeID", "payment_type"]:
+                  "RatecodeID", "payment_type"]:
             if c in df.columns:
                 df[c] = df[c].fillna("Unknown").astype(str)
 
@@ -149,20 +144,14 @@ while tanggal <= selesai:
         if "lpepDropoffDatetime" in df.columns:
             df["lpepDropoffDatetime"] = pd.to_datetime(df["lpepDropoffDatetime"])
 
-
         print("  Insert ke ClickHouse...")
-
         client.insert_df("green_taxi", df)
-
         print(f"  Berhasil: {len(df):,} baris masuk")
 
-
     except Exception as e:
-
         print(f"ERROR: {e}")
         time.sleep(5)
         continue
-
 
     del df
     gc.collect()
@@ -170,5 +159,4 @@ while tanggal <= selesai:
     tanggal += relativedelta(months=3)
 
 
-
-print("\nSELESAI - Semua data masuk ClickHouse")
+print("\nSELESAI - Semua data masuk ClickHouse (termasuk tip_amount asli)")
